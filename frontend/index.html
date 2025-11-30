@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Онлайн Журнал</title>
+    
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#4CAF50">
+    
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        header {
+            background-color: #4CAF50;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 10px 2px;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        #scanner-container {
+            position: relative;
+            width: 100%;
+            max-width: 500px;
+            margin: 20px auto;
+        }
+        #qr-video {
+            width: 100%;
+            border: 2px solid #4CAF50;
+            border-radius: 5px;
+        }
+        #qr-result {
+            margin: 20px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: white;
+            word-break: break-all;
+        }
+        .section {
+            background-color: white;
+            padding: 20px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .history-item {
+            background-color: white;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        #clear-history {
+            background-color: #f44336;
+            margin-bottom: 15px;
+        }
+
+        #scan-history {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 10px;
+        }
+
+        #username {
+            padding: 8px;
+            margin-right: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        #save-username {
+            background-color: #2196F3;
+        }
+
+        .history-item p {
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Онлайн Журнал</h1>
+    </header>
+    
+    <main>
+        <div class="section">
+            <h2>Идентификация преподавателя</h2>
+            <div>
+                <label for="username">Ваше имя:</label>
+                <input type="text" id="username" placeholder="Введите ваше имя" required>
+                <button id="save-username">Сохранить</button>
+            </div>
+            <p id="username-status" style="color: red;">Имя не введено</p>
+        </div>
+
+        <div class="section">
+            <h2>Сканер QR-кода аудитории</h2>
+            <div id="scanner-container">
+                <video id="qr-video" playsinline></video>
+            </div>
+            <button id="start-scanner">Запустить сканер</button>
+            <button id="stop-scanner" disabled>Остановить сканер</button>
+            
+            <h3>Результат сканирования:</h3>
+            <div id="qr-result">Здесь появится результат...</div>
+        </div>
+        
+        <div class="section">
+            <h2>Дополнительные функции</h2>
+            <button id="installBtn" style="display:none;">Установить приложение</button>
+            <button id="share-btn" disabled>Поделиться результатом</button>
+        </div>
+
+        <div class="section">
+            <h2>История журнала</h2>
+            <button id="clear-history">Очистить историю</button>
+            <div id="scan-history"></div>
+        </div>
+    </main>
+    
+    <footer>
+        <p>© 2025 Онлайн Журнал УРФУ</p>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+    
+    <script>
+        const videoElement = document.getElementById('qr-video');
+        const startBtn = document.getElementById('start-scanner');
+        const stopBtn = document.getElementById('stop-scanner');
+        const resultElement = document.getElementById('qr-result');
+        const shareBtn = document.getElementById('share-btn');
+        let currentUsername = localStorage.getItem('username') || '';
+        const usernameInput = document.getElementById('username');
+        const saveUsernameBtn = document.getElementById('save-username');
+        const usernameStatus = document.getElementById('username-status');
+        
+        let stream = null;
+        let scanning = false;
+
+        const ALLOWED_QR_CODES = ["Аудитория номер 1", "Аудитория номер 2", "Аудитория номер 3"];
+        const SCAN_COOLDOWN = 5000;
+        let lastScanTimestamps = JSON.parse(localStorage.getItem('lastScanTimestamps')) || {};
+
+        if (currentUsername) {
+            usernameInput.value = currentUsername;
+            usernameStatus.textContent = `Текущий преподаватель: ${currentUsername}`;
+            usernameStatus.style.color = 'green';
+            startBtn.disabled = false;
+        } else {
+            startBtn.disabled = true;
+        }
+
+        saveUsernameBtn.addEventListener('click', () => {
+            const name = usernameInput.value.trim();
+            if (name) {
+                currentUsername = name;
+                localStorage.setItem('username', name);
+                usernameStatus.textContent = `Текущий преподаватель: ${name}`;
+                usernameStatus.style.color = 'green';
+                startBtn.disabled = false;
+            } else {
+                usernameStatus.textContent = 'Пожалуйста, введите ваше имя';
+                usernameStatus.style.color = 'red';
+                startBtn.disabled = true;
+            }
+        });
+        
+        startBtn.addEventListener('click', async () => {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: "environment" } 
+                });
+                videoElement.srcObject = stream;
+                videoElement.play();
+                
+                startBtn.disabled = true;
+                stopBtn.disabled = false;
+                shareBtn.disabled = true;
+                
+                scanning = true;
+                scanQRCode();
+            } catch (err) {
+                resultElement.textContent = `Ошибка: ${err.message}`;
+                console.error(err);
+            }
+        });
+        
+        stopBtn.addEventListener('click', () => {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                videoElement.srcObject = null;
+            }
+            
+            startBtn.disabled = false;
+            stopBtn.disabled = true;
+            scanning = false;
+        });
+        
+        let deferredPrompt;
+        const installBtn = document.getElementById('installBtn');
+        
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            installBtn.style.display = 'block';
+        });
+        
+        installBtn.addEventListener('click', () => {
+            deferredPrompt.prompt();
+            deferredPrompt.userChoice.then((choiceResult) => {
+                if (choiceResult.outcome === 'accepted') {
+                    console.log('Пользователь установил PWA');
+                }
+                deferredPrompt = null;
+            });
+        });
+        
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then(registration => {
+                        console.log('ServiceWorker зарегистрирован');
+                    })
+                    .catch(err => {
+                        console.log('Ошибка регистрации ServiceWorker: ', err);
+                    });
+            });
+        }
+
+        let scanHistory = JSON.parse(localStorage.getItem('scanHistory')) || [];
+
+        function saveScanData(qrData) {
+            if (!isValidQrCode(qrData)) {
+                resultElement.style.border = "2px solid #f44336";
+                resultElement.style.backgroundColor = "#ffebee";
+                setTimeout(() => {
+                    resultElement.style.border = "1px solid #ddd";
+                    resultElement.style.backgroundColor = "";
+                }, 1000);
+                return false;
+            }
+            
+            const lastScanTime = lastScanTimestamps[currentUsername] || 0;
+            const currentTime = Date.now();
+            
+            if (currentTime - lastScanTime < SCAN_COOLDOWN) {
+                return false;
+            }
+            
+            lastScanTimestamps[currentUsername] = currentTime;
+            localStorage.setItem('lastScanTimestamps', JSON.stringify(lastScanTimestamps));
+            
+            const scanRecord = {
+                timestamp: new Date().toISOString(),
+                deviceName: navigator.userAgentData?.brands?.map(b => b.brand).join(' ') || navigator.userAgent,
+                username: currentUsername,
+                qrData: qrData
+            };
+            
+            scanHistory.unshift(scanRecord);
+            localStorage.setItem('scanHistory', JSON.stringify(scanHistory));
+            updateHistoryDisplay();
+            
+            resultElement.style.border = "2px solid #4CAF50";
+            resultElement.style.backgroundColor = "#e8f5e9";
+            setTimeout(() => {
+                resultElement.style.border = "1px solid #ddd";
+                resultElement.style.backgroundColor = "";
+            }, 1000);
+            
+            return true;
+        }
+
+        function updateHistoryDisplay() {
+            const historyContainer = document.getElementById('scan-history');
+            historyContainer.innerHTML = scanHistory.map(record => `
+                <div class="history-item">
+                    <p><strong>Преподаватель:</strong> ${record.username || 'Не указан'}</p>
+                    <p><strong>Время:</strong> ${new Date(record.timestamp).toLocaleString()}</p>
+                    <p><strong>Аудитория:</strong> ${record.qrData}</p>
+                    <hr>
+                </div>
+            `).join('');
+        }
+
+        document.getElementById('clear-history').addEventListener('click', () => {
+            scanHistory = [];
+            localStorage.removeItem('scanHistory');
+            updateHistoryDisplay();
+        });
+
+        function isValidQrCode(qrData) {
+            return ALLOWED_QR_CODES.includes(qrData);
+        }
+
+        function scanQRCode() {
+            if (!scanning) return;
+            
+            if (videoElement.readyState === 0 || videoElement.videoWidth === 0) {
+                requestAnimationFrame(scanQRCode);
+                return;
+            }
+            
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            canvas.width = videoElement.videoWidth;
+            canvas.height = videoElement.videoHeight;
+            
+            try {
+                context.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+                const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+                const code = jsQR(imageData.data, imageData.width, imageData.height);
+                
+                if (code) {
+                    resultElement.textContent = code.data;
+                    shareBtn.disabled = false;
+                    
+                    saveScanData(code.data);
+                }
+            } catch (err) {
+                console.error("Ошибка обработки кадра:", err);
+            }
+            
+            requestAnimationFrame(scanQRCode);
+        }
+
+        window.addEventListener('DOMContentLoaded', updateHistoryDisplay);
+    </script>
+</body>
+</html>
