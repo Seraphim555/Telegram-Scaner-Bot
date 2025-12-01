@@ -6,14 +6,22 @@ dotenv.config();
 
 const bot = new Telegraf(process.env.BOT_TOKEN);
 
+console.log("\nБот заупскается.");
+
 bot.start(async (ctx) => {
     const user = ctx.from;
+
+    console.log(`Пользователь ${user.id} (${user.first_name}) вызвал /start`);
 
     if (!users.has(user.id)) {
         users.set(user.id, {
             telegramId: user.id,
             name: user.first_name ?? "Без имени"
         });
+
+        console.log(`Зарегистрирован новый пользователь: ${user.id} ${user.first_name}`);
+    } else {
+        console.log(`Пользователь уже зарегистрирован: ${user.id}`);
     }
 
     await ctx.reply(
@@ -36,7 +44,21 @@ bot.start(async (ctx) => {
             }
         }
     );
+
+    console.log(`Кнопка WebApp отправлена пользователю ${user.id}`);
+});
+
+bot.on("text", (ctx) => {
+    const user = ctx.from;
+    const text = ctx.message.text;
+
+    console.log(`[message] ${user.id} (${user.first_name}): ${text}`);
+});
+
+bot.catch((err, ctx) => {
+    console.error("Ошибка в боте:", err);
+    console.error("Context:", ctx);
 });
 
 bot.launch();
-console.log("Бот запущен");
+console.log("Бот запущен...");
