@@ -1,25 +1,19 @@
-import { bot } from "../../bot/src/bot.js";
-import { subscribers, users } from "../../bot/src/db.js";
+import fetch from "node-fetch";
+
+const BOT_SERVICE_URL = "http://192.168.1.74:4000/notify";
 
 export async function notifySubscribers(log) {
-    console.log("📨 Начинаю рассылку подписчикам...");
+    try {
+        console.log("📨 Отправка уведомления боту...");
 
-    const { qrData, userId, userName, timestamp } = log;
+        await fetch(BOT_SERVICE_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(log)
+        });
 
-    const message =
-        `📨 Кто-то взял ключ!\n\n` +
-        `👤 Личность: ${userName}\n` +
-        `🔑 Аудитория: ${qrData}\n` +
-        `🕐 Время: ${new Date(timestamp).toLocaleString()}`;
-
-    for (const chatId of subscribers) {
-        try {
-            await bot.telegram.sendMessage(chatId, message);
-            console.log(`→ Уведомление отправлено ${chatId}`);
-        } catch (err) {
-            console.error(`❌ Ошибка отправки ${chatId}:`, err);
-        }
+        console.log("✅ Лог успешно отправлен боту");
+    } catch (err) {
+        console.error("❌ Ошибка при отправке уведомления боту:", err);
     }
-
-    console.log("📨 Рассылка завершена\n");
 }
