@@ -6,8 +6,6 @@ dotenv.config();
 
 const bot = new Telegraf(process.env.BOT_TOKEN);
 
-console.log("\nБот заупскается.");
-
 bot.start(async (ctx) => {
     const user = ctx.from;
 
@@ -112,8 +110,5 @@ bot.catch((err, ctx) => {
     console.error("Ошибка в боте:", err);
     console.error("Context:", ctx);
 });
-
-bot.launch();
-console.log("Бот запущен...");
 
 export { bot };
