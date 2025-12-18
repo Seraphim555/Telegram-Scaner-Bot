@@ -28,16 +28,20 @@ bot.start(async (ctx) => {
         `Привет, ${user.first_name}! 👋
 Я бот для учета ключей.
 
-Нажми кнопку ниже, чтобы открыть сканер 👇`,
+Нажми кнопку ниже, чтобы выбрать действие 👇`,
         {
             reply_markup: {
                 inline_keyboard: [
                     [
                         {
                             text: "Открыть сканер",
-                            web_app: {
-                                url: process.env.WEBAPP_URL
-                            }
+                            web_app: { url: process.env.WEBAPP_URL }
+                        },
+                        {
+                            text: subscribers.has(user.id)
+                                ? "🔕 Отписаться"
+                                : "💌 Подписаться",
+                            callback_data: "toggle_subscribe"
                         }
                     ]
                 ]
@@ -48,22 +52,53 @@ bot.start(async (ctx) => {
     console.log(`Кнопка WebApp отправлена пользователю ${user.id}`);
 });
 
-bot.command("subscribe", (ctx) => {
+bot.action("toggle_subscribe", async (ctx) => {
     const user = ctx.from;
+    const isSubscribed = subscribers.has(user.id);
 
-    subscribers.add(user.id);
-    ctx.reply("Вы подписались на уведомления 💌");
+    if (isSubscribed) {
+        subscribers.delete(user.id);
+        console.log(`Пользователь ${user.id} отписался`);
+    } else {
+        subscribers.add(user.id);
+        console.log(`Пользователь ${user.id} подписался`);
+    }
 
-    console.log(`[/subscribe] Пользователь ${user.id} (${user.first_name}) подписался`);
-});
+    const statusText = isSubscribed
+        ? "❌ Вы **отписались** от уведомлений."
+        : "✅ Вы **подписались** на уведомления о сканировании.";
 
-bot.command("unsubscribe", (ctx) => {
-    const user = ctx.from;
+    await ctx.answerCbQuery();
 
-    subscribers.delete(user.id);
-    ctx.reply("Вы отписались от уведомлений 🔕");
+    await ctx.editMessageText(
+        `Привет, ${user.first_name}! 👋
+Я бот для учета ключей.
 
-    console.log(`[/unsubscribe] Пользователь ${user.id} (${user.first_name}) отписался`);
+${statusText}
+
+Выбери действие 👇`,
+        {
+            parse_mode: "Markdown",
+            reply_markup: {
+                inline_keyboard: [
+                    [
+                        {
+                            text: "Открыть сканер",
+                            web_app: {
+                                url: process.env.WEBAPP_URL
+                            }
+                        },
+                        {
+                            text: isSubscribed
+                                ? "💌 Подписаться" 
+                                : "🔕 Отписаться",
+                            callback_data: "toggle_subscribe"
+                        }
+                    ]
+                ]
+            }
+        }
+    );
 });
 
 bot.on("text", (ctx) => {
