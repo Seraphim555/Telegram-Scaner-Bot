@@ -1,6 +1,6 @@
 import fetch from "node-fetch";
 
-const BOT_SERVICE_URL = "http://192.168.1.74:4000/notify";
+const BOT_SERVICE_URL = "https://cyan-ads-kneel.loca.lt";
 
 export async function notifySubscribers(log) {
     try {
