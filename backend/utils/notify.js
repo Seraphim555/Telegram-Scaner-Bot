@@ -7,10 +7,10 @@ export async function notifySubscribers(log) {
     const { qrData, userId, userName, timestamp } = log;
 
     const message =
-        `🔔 Новое сканирование\n` +
-        `👤 Пользователь: ${userName} (ID: ${userId})\n` +
-        `🔑 QR: ${qrData}\n` +
-        `⏰ Время: ${new Date(timestamp).toLocaleString()}`;
+        `📨 Кто-то взял ключ!\n\n` +
+        `👤 Личность: ${userName}\n` +
+        `🔑 Аудитория: ${qrData}\n` +
+        `🕐 Время: ${new Date(timestamp).toLocaleString()}`;
 
     for (const chatId of subscribers) {
         try {
