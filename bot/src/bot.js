@@ -1,6 +1,6 @@
 import { Telegraf } from "telegraf";
 import dotenv from "dotenv";
-import { users } from "./db.js";
+import { users, subscribers } from "./db.js";
 
 dotenv.config();
 
@@ -48,6 +48,24 @@ bot.start(async (ctx) => {
     console.log(`Кнопка WebApp отправлена пользователю ${user.id}`);
 });
 
+bot.command("subscribe", (ctx) => {
+    const user = ctx.from;
+
+    subscribers.add(user.id);
+    ctx.reply("Вы подписались на уведомления 💌");
+
+    console.log(`[/subscribe] Пользователь ${user.id} (${user.first_name}) подписался`);
+});
+
+bot.command("unsubscribe", (ctx) => {
+    const user = ctx.from;
+
+    subscribers.delete(user.id);
+    ctx.reply("Вы отписались от уведомлений 🔕");
+
+    console.log(`[/unsubscribe] Пользователь ${user.id} (${user.first_name}) отписался`);
+});
+
 bot.on("text", (ctx) => {
     const user = ctx.from;
     const text = ctx.message.text;
@@ -62,3 +80,5 @@ bot.catch((err, ctx) => {
 
 bot.launch();
 console.log("Бот запущен...");
+
+export { bot };
