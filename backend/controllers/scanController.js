@@ -20,8 +20,6 @@ export async function handleScanEvent(req, res) {
 
     scanLogs.push(log);
 
-    console.log("Лог добавлен:", log);
-
     await notifySubscribers(log);
 
     return res.json({ status: "ok" });
